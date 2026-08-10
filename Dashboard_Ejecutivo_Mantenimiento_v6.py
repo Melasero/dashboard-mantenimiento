@@ -100,6 +100,7 @@ v7.0 — "Real Data + Ficha Técnica FMX":
    participa en ningún cálculo del dashboard.
 """
 
+import os
 import sys
 import warnings
 import webbrowser
@@ -4371,6 +4372,21 @@ def construir_panel_estado_flota_dia_html(df_intervenciones: pd.DataFrame, total
 if __name__ == "__main__":
     print("🚀 Iniciando procesamiento de datos...")
     path_excel = Path(ARCHIVO_ENTRADA)
+
+    if not path_excel.exists():
+        # Fallback: si no se encuentra relativo al cwd (p.ej. se ejecutó el .py
+        # desde otra carpeta — terminal de VS Code abierta en otro directorio,
+        # doble clic, etc.), se reintenta relativo a la carpeta donde vive
+        # este archivo .py y, de existir ahí, se hace chdir a esa carpeta para
+        # que ARCHIVO_SALIDA_HTML y RUTA_IMAGEN_MOTOR_D13C también resuelvan
+        # bien. No afecta el modo Colab: ahí no hay un .py en disco (se corre
+        # tras un os.chdir manual), así que este bloque nunca se activa y el
+        # comportamiento cwd-relativo original queda intacto.
+        ruta_script = Path(__file__).resolve().parent
+        candidato = ruta_script / ARCHIVO_ENTRADA
+        if candidato.exists():
+            os.chdir(ruta_script)
+            path_excel = Path(ARCHIVO_ENTRADA)
 
     if not path_excel.exists():
         print(f"❌ Error: El archivo no existe en la ruta: {path_excel}")
