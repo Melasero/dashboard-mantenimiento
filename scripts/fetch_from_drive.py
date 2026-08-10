@@ -30,7 +30,6 @@ ARCHIVOS_RAIZ_A_DESCARGAR = [
     "Sistema_Control_Mantenimiento_Diario (1).xlsm",
     "motor_d13c.png",
 ]
-SUBCARPETA_VOLVO_CONNECT = "REPORTE DE VOLVO CONNECT"
 
 
 def _cliente_drive():
@@ -80,16 +79,6 @@ def main():
             faltantes.append(nombre)
             continue
         _descargar_archivo(servicio, item["id"], nombre)
-
-    carpeta_volvo = por_nombre.get(SUBCARPETA_VOLVO_CONNECT)
-    if carpeta_volvo and carpeta_volvo["mimeType"] == "application/vnd.google-apps.folder":
-        hijos_volvo = _listar_hijos(servicio, carpeta_volvo["id"])
-        for h in hijos_volvo:
-            if h["mimeType"] == "application/vnd.google-apps.folder":
-                continue
-            _descargar_archivo(servicio, h["id"], os.path.join(SUBCARPETA_VOLVO_CONNECT, h["name"]))
-    else:
-        print(f"  ⚠️  No se encontró la subcarpeta '{SUBCARPETA_VOLVO_CONNECT}' (el módulo MTBS quedará vacío).")
 
     if faltantes:
         print(f"  ⚠️  No se encontraron en Drive: {faltantes}")

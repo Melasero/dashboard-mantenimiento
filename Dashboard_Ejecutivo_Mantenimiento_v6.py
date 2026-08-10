@@ -141,25 +141,6 @@ ARCHIVO_ENTRADA = "Sistema_Control_Mantenimiento_Diario (1).xlsm"
 ARCHIVO_SALIDA_HTML = "Dashboard_Ejecutivo_Mantenimiento.html"
 RUTA_IMAGEN_MOTOR_D13C = "motor_d13c.png"
 
-# Archivos de horómetros (reportes "Rendimiento" de Volvo Connect) — usados EXCLUSIVAMENTE
-# por el módulo independiente de MTBS (ver sección D al final del archivo).
-RUTA_HOROMETROS_MAYO = r"C:\Users\Admin\Downloads\horometros\mayo.xlsx"
-RUTA_HOROMETROS_JUNIO = r"C:\Users\Admin\Downloads\horometros\straconSa-performance-20260723 (1).xlsx"
-RUTA_HOROMETROS_JULIO = r"C:\Users\Admin\Downloads\horometros\straconSa-performance-20260723.xlsx"
-
-# Carpeta dinámica de reportes Volvo Connect (ETL de hábitos operativos: Ralentí,
-# PTO, Punto muerto, Programador de velocidad, Consumo). Cuenta Volvo Connect
-# multi-sitio: cada Excel trae vehículos de VARIAS operaciones/clientes, no solo
-# STRACON-Antamina — de ahí el INNER JOIN estricto contra la flota Volvo FMX en
-# `construir_fact_volvo_connect`. Usada EXCLUSIVAMENTE por el módulo MTBS.
-RUTA_CARPETA_VOLVO_CONNECT = "REPORTE DE VOLVO CONNECT"
-
-MESES_ES = {
-    "ENERO": 1, "FEBRERO": 2, "MARZO": 3, "ABRIL": 4, "MAYO": 5, "JUNIO": 6,
-    "JULIO": 7, "AGOSTO": 8, "SEPTIEMBRE": 9, "SETIEMBRE": 9, "OCTUBRE": 10,
-    "NOVIEMBRE": 11, "DICIEMBRE": 12,
-}
-
 SHEET_PARQUE = "PARQUE DE EQUIPOS"
 SHEET_INTERVENCIONES = "Registro de Intervenciones"
 SHEET_PM_PLAN = "BD_Mantenimiento"
@@ -1174,27 +1155,18 @@ def generar_y_abrir_dashboard(df_kpis: pd.DataFrame, df_int: pd.DataFrame, df_pl
     data_pm_semanas = calcular_diccionario_semanas_pm(df_plan)
     banner_tecnico_html = construir_banner_tecnico_fmx()
 
-    # Módulo independiente MTBS (Mean Time Between Servicing) — ver sección D al
-    # final del archivo. Solo LEE df_int/df_parque ya cargados; no modifica ni
-    # depende de ningún cálculo de MTBF/MTTR/DM de las secciones A-C. Los
-    # horómetros (mayo/junio/julio 2026) son una fuente EXCLUSIVA de este módulo.
-    df_horometros = cargar_horometros_consolidado()
-    df_mtbs_mensual = vw_mtbs_volvo_fmx(df_int, df_parque, periodo="M", df_horometros=df_horometros)
-    df_volvo_connect = construir_fact_volvo_connect(RUTA_CARPETA_VOLVO_CONNECT, df_parque)
-    mtbs_panel_html, mtbs_script_html = construir_panel_mtbs_html(df_mtbs_mensual, df_volvo_connect)
-
-    # Módulo independiente Backlog — ver sección E al final del archivo. Solo LEE
+    # Módulo independiente Backlog — ver sección D al final del archivo. Solo LEE
     # la hoja DETALLE_BKL y df_parque (para el filtro Volvo FMX + categoría de flota);
-    # no modifica ni depende de ningún cálculo de MTBF/MTTR/DM/Pareto ni del módulo
-    # MTBS. "Gestión de Backlog" en tarjetas — una tarjeta por N_ITEM, con desglose de
-    # repuestos, disponibilidad de almacén y los 2 KPI resumen (% Cumplimiento,
-    # Pendientes); reemplaza al antiguo panel de barras por semana (retirado).
+    # no modifica ni depende de ningún cálculo de MTBF/MTTR/DM/Pareto. "Gestión de
+    # Backlog" en tarjetas — una tarjeta por N_ITEM, con desglose de repuestos,
+    # disponibilidad de almacén y los 2 KPI resumen (% Cumplimiento, Pendientes);
+    # reemplaza al antiguo panel de barras por semana (retirado).
     items_bkl = cargar_detalle_bkl_items(ARCHIVO_ENTRADA, df_parque)
     bkl_cards_panel_html, bkl_cards_script_html = construir_panel_bkl_cards_html(items_bkl)
 
-    # Módulo independiente Estado de Flota del Día — ver sección F al final del
+    # Módulo independiente Estado de Flota del Día — ver sección E al final del
     # archivo. Solo LEE df_int (ya cargado); no modifica ni depende de ningún
-    # cálculo de MTBF/MTTR/DM/Pareto ni de los módulos MTBS/Backlog. Tarjeta que
+    # cálculo de MTBF/MTTR/DM/Pareto ni del módulo de Backlog. Tarjeta que
     # se inserta junto al Velocímetro DM Global (misma fila).
     efd_panel_html, efd_script_html = construir_panel_estado_flota_dia_html(df_int)
 
@@ -1755,11 +1727,6 @@ def generar_y_abrir_dashboard(df_kpis: pd.DataFrame, df_int: pd.DataFrame, df_pl
                 50% {{ box-shadow: 0 0 20px rgba(220,38,38,0.5); }}
             }}
             .badge-alert {{ background: var(--critical); color: #fff; border: none; font-weight: 700; animation: pulseAlert 1.3s ease-in-out infinite; }}
-            /* --- Módulo independiente MTBS (namespace mtbs*, sin acoplar a otras tarjetas) --- */
-            .mtbs-badge-modulo {{
-                background: rgba(167,139,250,0.14); color: var(--violet); border: 1px solid rgba(167,139,250,0.5);
-                font-size: 0.62rem; font-weight: 700; letter-spacing: 0.04em; vertical-align: middle;
-            }}
             /* --- Módulo independiente Backlog (namespace bkl*, sin acoplar a otras tarjetas) --- */
             .bkl-badge-modulo {{
                 background: rgba(34,211,238,0.14); color: var(--cyan); border: 1px solid rgba(34,211,238,0.5);
@@ -2278,8 +2245,6 @@ def generar_y_abrir_dashboard(df_kpis: pd.DataFrame, df_int: pd.DataFrame, df_pl
                     </div>
                 </div>
             </div>
-
-            {mtbs_panel_html}
 
             {bkl_cards_panel_html}
         </div>
@@ -2962,22 +2927,12 @@ def generar_y_abrir_dashboard(df_kpis: pd.DataFrame, df_int: pd.DataFrame, df_pl
                 chip.style.display = 'inline-flex';
             }}
 
-            // El módulo MTBS es independiente en su CÁLCULO (no se toca su lógica ni sus
-            // datos aquí), pero reacciona en su UI al filtro cruzado global — se resalta
-            // (no se oculta) el equipo activo en sus gráficos, para no perder el contexto
-            // comparativo. Chequeo defensivo `typeof === 'function'` porque estas
-            // funciones viven en el <script> del módulo MTBS, cargado después.
-            function refrescarModuloMtbsPorFiltroCruzado() {{
-                if (typeof renderMtbsCorrelacionHabitos === 'function') {{ renderMtbsCorrelacionHabitos(); }}
-            }}
-
             function activarFiltroEquipo(equipo) {{
                 filtroEquipoActivo = equipo;
                 const select = document.getElementById('selectFiltroEquipo');
                 if (select) select.value = equipo;
                 mostrarChipFiltro();
                 aplicarFiltrosTabla('cross-equipo');
-                refrescarModuloMtbsPorFiltroCruzado();
             }}
 
             function activarFiltroSistema(sistema) {{
@@ -2993,7 +2948,6 @@ def generar_y_abrir_dashboard(df_kpis: pd.DataFrame, df_int: pd.DataFrame, df_pl
                 if (select) select.value = 'ALL';
                 mostrarChipFiltro();
                 aplicarFiltrosTabla('cross-clear');
-                refrescarModuloMtbsPorFiltroCruzado();
             }}
 
             function calcularHorasInopExactas(intervenciones, dInicioFiltro, dFinFiltro) {{
@@ -3664,8 +3618,6 @@ def generar_y_abrir_dashboard(df_kpis: pd.DataFrame, df_int: pd.DataFrame, df_pl
             }});
         </script>
 
-        {mtbs_script_html}
-
         {bkl_cards_script_html}
 
         {efd_script_html}
@@ -3682,670 +3634,23 @@ def generar_y_abrir_dashboard(df_kpis: pd.DataFrame, df_int: pd.DataFrame, df_pl
         print("ℹ️  No se pudo abrir el navegador automáticamente. Abra el archivo HTML manualmente.")
 
 
-# ==============================================================================
-# D. MÓDULO INDEPENDIENTE — MTBS (MEAN TIME BETWEEN SERVICING) · FLOTA VOLVO FMX
-# ==============================================================================
-# REGLA DE ORO: este bloque es un módulo AISLADO. No modifica, referencia ni
-# depende de ninguna función, variable, tabla o gráfico de MTBF/MTTR/Disponibilidad
-# Mecánica/Pareto de Fallas de las secciones A-C de este archivo. Es la traducción
-# a Python/pandas de la vista SQL de referencia `vw_mtbs_volvo_fmx`:
-#
-#   CREATE OR REPLACE VIEW vw_mtbs_volvo_fmx AS
-#   SELECT codigo_equipo, DATE_TRUNC('month', fecha_inicio_evento) AS mes_operativo,
-#          SUM(horas_operativas) AS horas_operativas_totales,
-#          COUNT(CASE WHEN duracion_horas > 0 AND tipo_evento IN ('PM','CM')
-#                     THEN id_evento END) AS total_intervenciones,
-#          SUM(horas_operativas) / NULLIF(COUNT(...), 0) AS mtbs_horas
-#   FROM Fact_Eventos_Taller E JOIN Fact_Horas_Equipos H ON ...
-#   WHERE E.flota = 'Volvo FMX'
-#   GROUP BY codigo_equipo, mes_operativo
-#
-# Este repositorio no tiene motor SQL ni tablas Fact_Eventos_Taller/Fact_Horas_
-# Equipos: la fuente real es el mismo Excel ya cargado por `cargar_intervenciones`
-# / `cargar_parque_equipos` (secciones A), consumido aquí SOLO COMO LECTURA — sin
-# tocar esas funciones.
-#
-# ACTUALIZACIÓN — Fact_Horas_Equipos real (horómetros Volvo Connect): se integran
-# los 3 reportes mensuales "Rendimiento" de mayo/junio/julio 2026 (columna 'Tiempo
-# total (hh:mm)' = horas motor reales del periodo; 'Uso del vehículo (%)' = %
-# Utilización real) como la fuente PREFERIDA de horas operativas para MTBS
-# mensual. El código de equipo del reporte ('ANT CV-474 E623927') se normaliza a
-# 'CV-00474' vía zero-padding — se probó y confirmó 100% de coincidencia (126/126
-# filas) contra COD INTERNO; el chasis NO se usa como llave porque el Excel de
-# PARQUE DE EQUIPOS tiene chasis con un prefijo 'EE' duplicado por error de tipeo
-# en varias filas. Cuando un equipo/mes no tiene horómetro real disponible (fuera
-# de mayo-julio 2026, o equipo ausente del reporte), se usa como respaldo la
-# aproximación por fusión de intervalos (horas-calendario menos horas de taller,
-# con `_mtbs_fusionar_intervalos`, propia e independiente de cualquier otro
-# cálculo del archivo) — cada fila queda marcada con su `fuente_horas` para que
-# la UI lo deje explícito.
-#
-# HALLAZGO DE DATOS: el Excel de intervenciones de taller (Registro de
-# Intervenciones) NO tiene registros anteriores al 19 de junio de 2026 — mayo
-# 2026 tiene horas de horómetro reales pero CERO intervenciones registradas, por
-# lo que el MTBS de mayo queda indefinido (numerador real, denominador vacío) y
-# se muestra así explícitamente, sin inventar un valor.
-# ==============================================================================
-
-
-def _mtbs_parsear_codigo_vehiculo(texto_vehiculo: str):
-    """Extrae y normaliza el código de equipo desde la etiqueta de vehículo de un
-    reporte Volvo Connect, p.ej. 'ANT CV-474 E623927' -> 'CV-00474'. Búsqueda NO
-    anclada a una posición fija de token (\\b[A-Za-z]{{2}}-0*\\d+) para tolerar los
-    formatos inconsistentes de las distintas operaciones/sitios que comparten la
-    misma cuenta Volvo Connect (p.ej. 'SHA:CV-00434:RE938671', 'QLL CV-431E939100',
-    sin espacios ni con separadores ':'). Confirmado 100% de coincidencia (126/126
-    filas del reporte de horómetros de mayo-julio + 44/44 filas 'ANT' del reporte
-    multi-sitio de abril) contra COD INTERNO de PARQUE DE EQUIPOS — más confiable
-    que emparejar por chasis (que tiene inconsistencias de tipeo en el Excel de
-    origen, p.ej. 'EE623927' en vez de 'E623927')."""
-    m = re.search(r"\b([A-Za-z]{2})-0*(\d+)", str(texto_vehiculo))
-    if not m:
-        return None
-    prefijo, numero = m.group(1).upper(), m.group(2)
-    return f"{prefijo}-{int(numero):05d}"
-
-
-def _mtbs_hhmm_a_horas(valor) -> float:
-    """Convierte un valor 'hh:mm' (puede superar 24h, p.ej. '489:34') del reporte
-    de horómetros a horas decimales. Devuelve 0.0 si no es parseable. Utilidad
-    privada y exclusiva del módulo MTBS."""
-    if pd.isna(valor):
-        return 0.0
-    texto = str(valor).strip()
-    if ":" not in texto:
-        try:
-            return float(texto)
-        except ValueError:
-            return 0.0
-    try:
-        horas_str, minutos_str = texto.split(":")
-        return abs(int(horas_str)) + int(minutos_str) / 60.0
-    except (ValueError, IndexError):
-        return 0.0
-
-
-def cargar_horometros_mensual(ruta: str, periodo: str) -> pd.DataFrame:
-    """
-    Lee un reporte mensual "Rendimiento" de Volvo Connect (hoja 'Datos del
-    informe') y devuelve, por equipo: horas operativas reales del horómetro
-    ('Tiempo total') y % de utilización real ('Uso del vehículo'). Lectura
-    tolerante a fallos: si el archivo no existe o no tiene el formato esperado,
-    devuelve un DataFrame vacío y emite un aviso — nunca detiene la generación
-    del resto del dashboard.
-    """
-    columnas_salida = ["codigo_equipo", "periodo", "horas_operativas_horometro", "pct_utilizacion"]
-    try:
-        df = pd.read_excel(ruta, sheet_name="Datos del informe", header=1)
-    except Exception as e:
-        print(f"⚠️  Aviso (módulo MTBS): no se pudo leer el horómetro de {periodo} ({ruta}): {e}")
-        return pd.DataFrame(columns=columnas_salida)
-
-    df.columns = [str(c).strip() for c in df.columns]
-    if "Vehículos" not in df.columns or "Tiempo total (hh:mm)" not in df.columns:
-        print(f"⚠️  Aviso (módulo MTBS): el horómetro de {periodo} no tiene las columnas esperadas. Se omite.")
-        return pd.DataFrame(columns=columnas_salida)
-
-    df = df[df["Vehículos"].notna() & (df["Vehículos"].astype(str).str.strip() != "Todo:")].copy()
-
-    df["codigo_equipo"] = df["Vehículos"].apply(_mtbs_parsear_codigo_vehiculo)
-    df = df.dropna(subset=["codigo_equipo"]).copy()
-
-    df["horas_operativas_horometro"] = df["Tiempo total (hh:mm)"].apply(_mtbs_hhmm_a_horas)
-    df["pct_utilizacion"] = pd.to_numeric(df.get("Uso del vehículo (%)"), errors="coerce")
-    df["periodo"] = periodo
-
-    return df[columnas_salida].reset_index(drop=True)
-
-
-def cargar_horometros_consolidado() -> pd.DataFrame:
-    """Consolida los 3 reportes mensuales de horómetros (mayo/junio/julio 2026) en
-    un único DataFrame [codigo_equipo, periodo, horas_operativas_horometro,
-    pct_utilizacion]. Fuente EXCLUSIVA del módulo MTBS."""
-    partes = [
-        cargar_horometros_mensual(RUTA_HOROMETROS_MAYO, "2026-05"),
-        cargar_horometros_mensual(RUTA_HOROMETROS_JUNIO, "2026-06"),
-        cargar_horometros_mensual(RUTA_HOROMETROS_JULIO, "2026-07"),
-    ]
-    partes_validas = [p for p in partes if len(p)]
-    if not partes_validas:
-        return pd.DataFrame(columns=["codigo_equipo", "periodo", "horas_operativas_horometro", "pct_utilizacion"])
-    return pd.concat(partes_validas, ignore_index=True)
-
-
-def _vc_extraer_periodo_de_nombre_archivo(nombre_archivo: str):
-    """Extrae el periodo AAAA-MM del nombre de un reporte Volvo Connect, p.ej.
-    'ABRIL 2026.xlsx' -> '2026-04'. Devuelve None si el nombre no sigue el patrón
-    'MES AAAA' (mes en español). Insensible a mayúsculas/acentos."""
-    nombre = Path(nombre_archivo).stem.strip().upper()
-    nombre_sin_acentos = (
-        nombre.replace("Á", "A").replace("É", "E").replace("Í", "I")
-        .replace("Ó", "O").replace("Ú", "U")
-    )
-    m = re.search(r"([A-Z]+)\s+(\d{4})", nombre_sin_acentos)
-    if not m:
-        return None
-    mes_num = MESES_ES.get(m.group(1))
-    if mes_num is None:
-        return None
-    return f"{m.group(2)}-{mes_num:02d}"
-
-
-def cargar_reporte_volvo_connect(ruta_archivo: str, equipos_fmx: set) -> dict:
-    """
-    Lee UN reporte mensual Volvo Connect (multi-sitio, hoja 'Datos del informe'),
-    extrae el periodo desde el nombre del archivo, aplica el INNER JOIN estricto
-    contra `equipos_fmx` (WHERE flota = 'Volvo FMX', ver `_mtbs_equipos_volvo_fmx`)
-    y limpia/convierte a numérico las variables de hábito operativo pedidas.
-
-    Retorna {"periodo", "df", "total_leidos", "retenidos", "ignorados"} — nunca
-    lanza excepción: un archivo ilegible o sin periodo reconocible se reporta con
-    df vacío en vez de detener el resto del pipeline.
-    """
-    nombre_archivo = Path(ruta_archivo).name
-    columnas_salida = [
-        "codigo_equipo", "Periodo_Volvo", "distancia_km", "diesel_motor_marcha_l",
-        "promedio_conduccion_kmh", "ralenti_pct", "pto_pct", "punto_muerto_pct",
-        "programador_velocidad_pct", "consumo_l_100km", "archivo_origen"
-    ]
-    resultado_vacio = {"periodo": None, "df": pd.DataFrame(columns=columnas_salida),
-                        "total_leidos": 0, "retenidos": 0, "ignorados": 0}
-
-    periodo = _vc_extraer_periodo_de_nombre_archivo(nombre_archivo)
-    if periodo is None:
-        print(f"⚠️  Aviso (Fact_VolvoConnect): '{nombre_archivo}' no sigue el patrón 'MES AAAA' — se omite.")
-        return resultado_vacio
-
-    try:
-        df = pd.read_excel(ruta_archivo, sheet_name="Datos del informe", header=1)
-    except Exception as e:
-        print(f"⚠️  Aviso (Fact_VolvoConnect): no se pudo leer '{nombre_archivo}' ({e}). Se omite.")
-        return resultado_vacio
-
-    df.columns = [str(c).strip() for c in df.columns]
-    if "Vehículos" not in df.columns:
-        print(f"⚠️  Aviso (Fact_VolvoConnect): '{nombre_archivo}' no tiene columna 'Vehículos'. Se omite.")
-        return resultado_vacio
-
-    df = df[df["Vehículos"].notna() & (df["Vehículos"].astype(str).str.strip() != "Todo:")].copy()
-    total_leidos = len(df)
-
-    # Filtro cruzado (INNER JOIN) contra la tabla maestra de equipos: solo se
-    # conservan códigos que pertenecen explícitamente a la flota Volvo FMX.
-    df["codigo_equipo"] = df["Vehículos"].apply(_mtbs_parsear_codigo_vehiculo)
-    retenidos_df = df[df["codigo_equipo"].isin(equipos_fmx)].copy()
-    ignorados = total_leidos - len(retenidos_df)
-
-    mapa_columnas = {
-        "Distancia total (km)": "distancia_km",
-        "Diésel con motor en marcha (l)": "diesel_motor_marcha_l",
-        "Promedio de conducción (km/h)": "promedio_conduccion_kmh",
-        "Ralentí (%)": "ralenti_pct",
-        "PTO (%)": "pto_pct",
-        "En punto muerto (%)": "punto_muerto_pct",
-        "Programador de velocidad (%)": "programador_velocidad_pct",
-        "Promedio de diésel con motor en marcha (l/100\xa0km)": "consumo_l_100km",
-    }
-    for col_origen, col_destino in mapa_columnas.items():
-        if col_origen in retenidos_df.columns:
-            # Limpieza defensiva: quita '%'/texto residual (p.ej. 'N/D', '-') y
-            # convierte a numérico; valores ya numéricos pasan sin cambios.
-            valores = retenidos_df[col_origen].astype(str).str.replace("%", "", regex=False).str.strip()
-            retenidos_df[col_destino] = pd.to_numeric(valores, errors="coerce")
-        else:
-            retenidos_df[col_destino] = pd.NA
-
-    retenidos_df["Periodo_Volvo"] = periodo
-    retenidos_df["archivo_origen"] = nombre_archivo
-
-    return {
-        "periodo": periodo,
-        "df": retenidos_df[columnas_salida].reset_index(drop=True),
-        "total_leidos": total_leidos,
-        "retenidos": len(retenidos_df),
-        "ignorados": ignorados,
-    }
-
-
-def construir_fact_volvo_connect(ruta_carpeta: str, df_parque: pd.DataFrame) -> pd.DataFrame:
-    """
-    ETL dinámico (Requerimientos 1-4): escanea `ruta_carpeta` en busca de TODOS
-    los .xlsx presentes (sin nombres de archivo hardcodeados — cualquier
-    'MES AAAA.xlsx' nuevo se procesa automáticamente), aplica el INNER JOIN
-    estricto de flota Volvo FMX y consolida los registros retenidos en
-    `Fact_VolvoConnect`. Imprime por consola el detalle de ignorados/retenidos por
-    archivo y el total. Nunca detiene la generación del dashboard: carpeta
-    ausente/vacía o archivo ilegible se reportan con aviso, no con excepción.
-    """
-    columnas_salida = [
-        "codigo_equipo", "Periodo_Volvo", "distancia_km", "diesel_motor_marcha_l",
-        "promedio_conduccion_kmh", "ralenti_pct", "pto_pct", "punto_muerto_pct",
-        "programador_velocidad_pct", "consumo_l_100km", "archivo_origen"
-    ]
-
-    carpeta = Path(ruta_carpeta)
-    print(f"\n📂 Fact_VolvoConnect — escaneando: {carpeta}")
-    if not carpeta.exists() or not carpeta.is_dir():
-        print("⚠️  Aviso (Fact_VolvoConnect): la carpeta no existe. Se omite el ETL de Volvo Connect.")
-        return pd.DataFrame(columns=columnas_salida)
-
-    archivos = sorted(carpeta.glob("*.xlsx"))
-    if not archivos:
-        print("⚠️  Aviso (Fact_VolvoConnect): no se encontraron archivos .xlsx en la carpeta.")
-        return pd.DataFrame(columns=columnas_salida)
-
-    equipos_fmx = _mtbs_equipos_volvo_fmx(df_parque)
-
-    partes = []
-    total_leidos_global = 0
-    total_retenidos_global = 0
-    total_ignorados_global = 0
-
-    for archivo in archivos:
-        r = cargar_reporte_volvo_connect(str(archivo), equipos_fmx)
-        total_leidos_global += r["total_leidos"]
-        total_retenidos_global += r["retenidos"]
-        total_ignorados_global += r["ignorados"]
-        if r["periodo"]:
-            print(f"   {archivo.name:<22s} -> periodo {r['periodo']} | leídos: {r['total_leidos']:>4d} | "
-                  f"retenidos (Volvo FMX): {r['retenidos']:>3d} | ignorados: {r['ignorados']:>4d}")
-        if len(r["df"]):
-            partes.append(r["df"])
-
-    print(f"📊 Fact_VolvoConnect — TOTAL: {total_leidos_global} registros leídos | "
-          f"{total_retenidos_global} Volvo FMX útiles retenidos | "
-          f"{total_ignorados_global} ignorados (otras flotas/sitios)\n")
-
-    if not partes:
-        return pd.DataFrame(columns=columnas_salida)
-    return pd.concat(partes, ignore_index=True)
-
-
-def _mtbs_fusionar_intervalos(intervalos: list) -> list:
-    """Fusiona intervalos [ini, fin] solapados. Utilidad privada y exclusiva del
-    módulo MTBS — no se comparte con ninguna otra sección de este archivo."""
-    if not intervalos:
-        return []
-    intervalos_ordenados = sorted(intervalos, key=lambda x: x[0])
-    fusionados = [list(intervalos_ordenados[0])]
-    for ini, fin in intervalos_ordenados[1:]:
-        if ini <= fusionados[-1][1]:
-            fusionados[-1][1] = max(fusionados[-1][1], fin)
-        else:
-            fusionados.append([ini, fin])
-    return fusionados
-
-
-def _mtbs_equipos_volvo_fmx(df_parque: pd.DataFrame) -> set:
+def _equipos_volvo_fmx(df_parque: pd.DataFrame) -> set:
     """WHERE E.flota = 'Volvo FMX' — set de COD INTERNO cuya MARCA es VOLVO y
-    MODELO contiene 'FMX'. Único punto de verdad de este filtro, reutilizado por
-    `vw_mtbs_volvo_fmx` y por el ETL de `Fact_VolvoConnect` (INNER JOIN estricto
-    de flota), para no duplicar el criterio en dos lugares."""
+    MODELO contiene 'FMX'. Único punto de verdad de este filtro (lo usa el
+    módulo de Backlog para su INNER JOIN de flota)."""
     marca_ok = df_parque.get("MARCA", pd.Series(dtype=str)).astype(str).str.strip().str.upper() == "VOLVO"
     modelo_ok = df_parque.get("MODELO", pd.Series(dtype=str)).astype(str).str.upper().str.contains("FMX", na=False)
     return set(df_parque.loc[marca_ok & modelo_ok, "COD INTERNO"])
 
 
-def vw_mtbs_volvo_fmx(df_intervenciones: pd.DataFrame, df_parque: pd.DataFrame, periodo: str = "M",
-                       df_horometros: pd.DataFrame = None) -> pd.DataFrame:
-    """
-    MTBS = Horas Operativas Totales / N° Total de Intervenciones, agrupado por
-    código de equipo Volvo FMX y por periodo.
-
-    Parámetros
-    ----------
-    df_intervenciones : DataFrame ya devuelto por `cargar_intervenciones` (solo
-        lectura — equivale a Fact_Eventos_Taller).
-    df_parque : DataFrame ya devuelto por `cargar_parque_equipos` (solo lectura —
-        se usa únicamente para resolver el WHERE flota = 'Volvo FMX' vía MARCA/
-        MODELO).
-    periodo : "M" mensual (equivalente a DATE_TRUNC('month', ...)) o "W" semanal
-        (usa la columna SEMANA ya calculada, para no reinventar otro esquema de
-        semana calendario). Los horómetros son mensuales, así que solo afinan "M".
-    df_horometros : DataFrame opcional de `cargar_horometros_consolidado()`
-        [codigo_equipo, periodo, horas_operativas_horometro, pct_utilizacion].
-        Cuando existe una fila real para (equipo, mes), se usa como numerador
-        EXACTO en vez de la aproximación por fusión de intervalos; si no, se
-        conserva el respaldo aproximado. Cada fila de salida indica cuál fuente
-        se usó en `fuente_horas`.
-
-    Retorna
-    -------
-    DataFrame: codigo_equipo, periodo, horas_operativas_totales,
-    total_intervenciones, mtbs_horas, pct_utilizacion, fuente_horas — una fila
-    por equipo y periodo.
-    """
-    columnas_salida = [
-        "codigo_equipo", "periodo", "horas_operativas_totales", "total_intervenciones",
-        "mtbs_horas", "pct_utilizacion", "fuente_horas"
-    ]
-
-    # WHERE E.flota = 'Volvo FMX'
-    equipos_fmx = _mtbs_equipos_volvo_fmx(df_parque)
-    if not equipos_fmx:
-        return pd.DataFrame(columns=columnas_salida)
-
-    df = df_intervenciones[df_intervenciones["EQUIPO"].isin(equipos_fmx)].copy()
-
-    # tipo_evento IN ('PM','CM') -> PREVENTIVO/CORRECTIVO ; duracion_horas > 0
-    tipo_col = df.get("TIPO DE INTERVENCION", pd.Series(dtype=str)).astype(str)
-    es_pm_cm = tipo_col.str.contains("PREVENTIV", na=False) | tipo_col.str.contains("CORRECTIV", na=False)
-    duracion_valida = df.get("Horas_Reparacion_Neta", pd.Series(dtype=float)).fillna(0) > 0
-    df_validos = df[es_pm_cm & duracion_valida].copy()
-
-    if periodo == "W":
-        df_validos["periodo_key"] = df_validos["SEMANA"]
-    else:
-        # Descarta filas sin FECHA ANTES de convertir a texto: dt.to_period().astype(str)
-        # convierte NaT en el literal "NaT", que ya no es detectable con pd.isna() más
-        # abajo y colaría como un periodo mensual fantasma.
-        df_validos = df_validos[df_validos["FECHA"].notna()].copy()
-        df_validos["periodo_key"] = df_validos["FECHA"].dt.to_period("M").astype(str)
-
-    grupos_taller = {clave: grupo for clave, grupo in df_validos.groupby(["EQUIPO", "periodo_key"])}
-
-    # Horómetro real solo aplica a la rama mensual — se indexa (equipo, periodo).
-    horometro_por_clave = {}
-    if periodo == "M" and df_horometros is not None and len(df_horometros):
-        horometro_valido = df_horometros[df_horometros["codigo_equipo"].isin(equipos_fmx)]
-        for _, r in horometro_valido.iterrows():
-            horometro_por_clave[(r["codigo_equipo"], r["periodo"])] = r
-
-    # Universo de (equipo, periodo) a calcular: todo combo con datos de TALLER
-    # y/o de HORÓMETRO (así un mes solo-horómetro, como mayo, también se reporta
-    # — con MTBS indefinido si no hay intervenciones — en vez de desaparecer).
-    claves = set(grupos_taller.keys()) | set(horometro_por_clave.keys())
-
-    filas = []
-    for equipo, periodo_key in claves:
-        if pd.isna(periodo_key):
-            continue
-
-        grupo = grupos_taller.get((equipo, periodo_key))
-        total_intervenciones = int(len(grupo)) if grupo is not None else 0
-
-        fila_horometro = horometro_por_clave.get((equipo, periodo_key))
-
-        if periodo == "W":
-            horas_calendario = 168.0
-            periodo_str = str(int(periodo_key))
-        else:
-            horas_calendario = pd.Period(periodo_key, freq="M").days_in_month * 24.0
-            periodo_str = str(periodo_key)
-
-        if fila_horometro is not None:
-            horas_operativas = float(fila_horometro["horas_operativas_horometro"])
-            pct_utilizacion = fila_horometro["pct_utilizacion"]
-            fuente_horas = "horometro_real"
-        else:
-            intervalos = []
-            if grupo is not None:
-                for _, r in grupo.iterrows():
-                    ini = r.get("H_INICIO_REAL")
-                    fin = r.get("H. FIN INTERV.")
-                    if pd.isna(ini):
-                        continue
-                    if pd.isna(fin):
-                        fin = ini + pd.Timedelta(hours=float(r.get("Horas_Reparacion_Neta", 0) or 0))
-                    if pd.notnull(ini) and pd.notnull(fin) and fin > ini:
-                        intervalos.append((ini, fin))
-            horas_taller = sum(
-                (f - i).total_seconds() / 3600 for i, f in _mtbs_fusionar_intervalos(intervalos)
-            )
-            horas_operativas = max(0.0, horas_calendario - horas_taller)
-            pct_utilizacion = None
-            fuente_horas = "aproximado_taller"
-
-        mtbs_horas = round(horas_operativas / total_intervenciones, 2) if total_intervenciones > 0 else None
-
-        filas.append({
-            "codigo_equipo": equipo,
-            "periodo": periodo_str,
-            "horas_operativas_totales": round(horas_operativas, 2),
-            "total_intervenciones": total_intervenciones,
-            "mtbs_horas": mtbs_horas,
-            "pct_utilizacion": round(float(pct_utilizacion), 2) if pd.notna(pct_utilizacion) else None,
-            "fuente_horas": fuente_horas
-        })
-
-    resultado = pd.DataFrame(filas, columns=columnas_salida)
-    if len(resultado):
-        resultado = resultado.sort_values(["periodo", "codigo_equipo"]).reset_index(drop=True)
-    return resultado
-
-
-def construir_panel_mtbs_html(df_mtbs_mensual: pd.DataFrame, df_volvo_connect: pd.DataFrame = None) -> tuple:
-    """
-    Construye el fragmento HTML del panel MTBS (módulo aislado) + los JSON que
-    alimentan su JS dedicado. No reutiliza ningún id/clase/función de las demás
-    tarjetas del dashboard (prefijo `mtbs`/`Mtbs` exclusivo de este módulo).
-    """
-    def _mtbs_registros_json_seguros(df):
-        # pandas convierte silenciosamente los None de columnas numéricas mixtas
-        # (mtbs_horas/pct_utilizacion) a NaN al construir el DataFrame; json.dumps(nan)
-        # emite el token inválido "NaN" en el <script>. Se normaliza de vuelta a None
-        # (-> "null" en JSON) antes de serializar.
-        registros = df.to_dict(orient="records")
-        for r in registros:
-            for k, v in r.items():
-                if isinstance(v, float) and pd.isna(v):
-                    r[k] = None
-        return registros
-
-    json_mtbs_mensual = json.dumps(_mtbs_registros_json_seguros(df_mtbs_mensual))
-    json_volvo_connect = json.dumps(
-        _mtbs_registros_json_seguros(df_volvo_connect) if df_volvo_connect is not None else []
-    )
-
-    html = f"""
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="glass-panel chart-card chart-container" id="panel_mtbs_habitos">
-                <div class="chart-toolbar">
-                    <span class="chart-toolbar-title">
-                        <i class="fa-solid fa-gauge-simple-high me-1" style="color: var(--violet);"></i>
-                        Correlación MTBS vs. Hábitos Operativos — Fact_VolvoConnect
-                        <span class="badge mtbs-badge-modulo ms-2">MÓDULO INDEPENDIENTE</span>
-                    </span>
-                    <div class="chart-toolbar-controls">
-                        <select class="select-mini" id="mtbsSelectEjeXHabitos" onchange="renderMtbsCorrelacionHabitos()">
-                            <option value="ralenti_pct" selected>Ralentí (%)</option>
-                            <option value="pto_pct">PTO (%)</option>
-                            <option value="punto_muerto_pct">En punto muerto (%)</option>
-                            <option value="promedio_conduccion_kmh">Promedio de conducción (km/h)</option>
-                            <option value="consumo_l_100km">Consumo (l/100 km)</option>
-                        </select>
-                    </div>
-                </div>
-                <small class="text-secondary d-block mb-2">
-                    <i class="fa-solid fa-circle-info me-1"></i>
-                    Cada punto es un equipo-mes real de <code>Fact_VolvoConnect</code> (telemetría Volvo Connect,
-                    filtrada estrictamente a la flota Volvo FMX vía INNER JOIN contra PARQUE DE EQUIPOS — se
-                    descartan automáticamente los vehículos de otras operaciones/sitios que comparten la misma
-                    cuenta) cruzado con el MTBS mensual del mismo equipo/mes. Objetivo: visualizar si un ralentí
-                    alto (mal hábito operativo) coincide con equipos "talleristas" (MTBS bajo, rojo).
-                </small>
-                <div id="chartMtbsHabitos" style="width:100%; height:400px;"></div>
-            </div>
-        </div>
-    </div>
-    """
-
-    script = f"""
-        <script>
-            // ============================================================
-            // MÓDULO INDEPENDIENTE — MTBS. Namespace propio (prefijo mtbs*),
-            // no comparte identificadores con el resto del dashboard.
-            // ============================================================
-            const MTBS_MENSUAL_DATA = {json_mtbs_mensual};
-            const VOLVO_CONNECT_DATA = {json_volvo_connect};
-
-            // Umbral mínimo de horas operativas para mostrar un equipo-mes en la
-            // correlación (Mejora 1): descarta picos irreales de equipos que casi no
-            // trabajaron o con subregistro de paradas. Es un filtro de PRESENTACIÓN —
-            // no altera MTBS_MENSUAL_DATA ni la fórmula calculada en Python.
-            const MTBS_HORAS_MIN_VISIBLE = 50;
-            const MTBS_TARGET_HORAS = 140;
-
-            // Formato condicional de color por barra (Mejora 3).
-            function mtbsColorPorValor(mtbs) {{
-                if (mtbs < 90) return '#EF4444';
-                if (mtbs < MTBS_TARGET_HORAS) return '#F59E0B';
-                return '#10B981';
-            }}
-
-            // Insignia de estado en texto, para tooltips enriquecidos.
-            function mtbsEstadoTexto(mtbs) {{
-                if (mtbs < 90) return 'TALLERISTA';
-                if (mtbs < MTBS_TARGET_HORAS) return 'ALERTA';
-                return 'ÓPTIMO';
-            }}
-
-            // Regresión lineal simple (mínimos cuadrados) para la línea de tendencia
-            // de los gráficos de correlación — se recalcula con cada cambio de métrica.
-            function mtbsCalcularTendenciaLineal(xs, ys) {{
-                const n = xs.length;
-                if (n < 2) return null;
-                const sumX = xs.reduce((a, b) => a + b, 0);
-                const sumY = ys.reduce((a, b) => a + b, 0);
-                const sumXY = xs.reduce((acc, x, i) => acc + x * ys[i], 0);
-                const sumXX = xs.reduce((acc, x) => acc + x * x, 0);
-                const denom = (n * sumXX - sumX * sumX);
-                if (denom === 0) return null;
-                const pendiente = (n * sumXY - sumX * sumY) / denom;
-                const intercepto = (sumY - pendiente * sumX) / n;
-                return {{ pendiente, intercepto }};
-            }}
-
-            // ============================================================
-            // Correlación MTBS vs. Hábitos Operativos (Fact_VolvoConnect). Join
-            // client-side por (codigo_equipo, periodo == Periodo_Volvo) contra
-            // MTBS_MENSUAL_DATA — mismo criterio >50h operativas y MTBS calculable
-            // ya usado en el resto del módulo, para no mezclar puntos no confiables.
-            // Totalmente reactivo: cambiar la métrica del Eje X recalcula puntos,
-            // escala, línea de tendencia (regresión lineal) y tooltips al instante.
-            // Clic en un punto activa el filtro cruzado GLOBAL por equipo (mismo
-            // `activarFiltroEquipo` que usan el resto de los gráficos del
-            // dashboard); el equipo activo se resalta aquí con un anillo dorado en
-            // vez de ocultar el resto de los puntos, para no perder el contexto de
-            // la correlación completa.
-            // ============================================================
-            const MTBS_ETIQUETAS_EJE_X = {{
-                ralenti_pct: 'Ralentí (%)',
-                pto_pct: 'PTO (%)',
-                punto_muerto_pct: 'En punto muerto (%)',
-                promedio_conduccion_kmh: 'Promedio de conducción (km/h)',
-                consumo_l_100km: 'Consumo (l/100 km)'
-            }};
-
-            function renderMtbsCorrelacionHabitos() {{
-                const ejeXCampo = document.getElementById('mtbsSelectEjeXHabitos').value;
-                const etiquetaEjeX = MTBS_ETIQUETAS_EJE_X[ejeXCampo] || ejeXCampo;
-
-                const mtbsPorClave = {{}};
-                MTBS_MENSUAL_DATA.forEach(d => {{ mtbsPorClave[d.codigo_equipo + '|' + d.periodo] = d; }});
-
-                const puntos = [];
-                VOLVO_CONNECT_DATA.forEach(v => {{
-                    const m = mtbsPorClave[v.codigo_equipo + '|' + v.Periodo_Volvo];
-                    if (!m || m.mtbs_horas === null || m.mtbs_horas === undefined) return;
-                    if (m.horas_operativas_totales <= MTBS_HORAS_MIN_VISIBLE) return;
-                    const valorX = v[ejeXCampo];
-                    if (valorX === null || valorX === undefined) return;
-                    puntos.push({{
-                        equipo: v.codigo_equipo, periodo: v.Periodo_Volvo,
-                        x: valorX, mtbs: m.mtbs_horas
-                    }});
-                }});
-
-                if (!puntos.length) {{
-                    Plotly.react('chartMtbsHabitos', [], {{
-                        template: 'plotly_dark', paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
-                        annotations: [{{ text: 'Sin equipos-mes con Fact_VolvoConnect + MTBS calculable', showarrow: false, font: {{ color: '#64748b' }} }}],
-                        height: 300
-                    }}, {{ displaylogo: false, responsive: true }});
-                    return;
-                }}
-
-                const esActivo = p => filtroEquipoActivo && p.equipo === filtroEquipoActivo;
-
-                const trace = {{
-                    type: 'scatter', mode: 'markers',
-                    x: puntos.map(p => p.x),
-                    y: puntos.map(p => p.mtbs),
-                    customdata: puntos.map(p => [p.equipo, p.periodo, mtbsEstadoTexto(p.mtbs)]),
-                    marker: {{
-                        size: puntos.map(p => esActivo(p) ? 16 : 10),
-                        color: puntos.map(p => mtbsColorPorValor(p.mtbs)),
-                        line: {{
-                            width: puntos.map(p => esActivo(p) ? 3 : 1),
-                            color: puntos.map(p => esActivo(p) ? '#FFD700' : '#0d1b2e')
-                        }}
-                    }},
-                    hovertemplate:
-                        '<b>%{{customdata[0]}}</b><br>' +
-                        etiquetaEjeX + ': <b>%{{x:.1f}}</b><br>' +
-                        'MTBS: <b>%{{y:.1f}} h</b> · %{{customdata[2]}}<br>' +
-                        'Periodo: %{{customdata[1]}}' +
-                        '<extra></extra>'
-                }};
-
-                const traces = [trace];
-                const tendencia = mtbsCalcularTendenciaLineal(puntos.map(p => p.x), puntos.map(p => p.mtbs));
-                if (tendencia) {{
-                    const xMin = Math.min(...puntos.map(p => p.x));
-                    const xMax = Math.max(...puntos.map(p => p.x));
-                    traces.push({{
-                        type: 'scatter', mode: 'lines',
-                        x: [xMin, xMax],
-                        y: [tendencia.pendiente * xMin + tendencia.intercepto, tendencia.pendiente * xMax + tendencia.intercepto],
-                        line: {{ color: 'rgba(167,139,250,0.65)', width: 2, dash: 'dash' }},
-                        name: 'Tendencia', hoverinfo: 'skip', showlegend: false
-                    }});
-                }}
-
-                const layout = {{
-                    template: 'plotly_dark', paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
-                    font: {{ family: 'Inter, Segoe UI, sans-serif', color: '#e2e8f0' }},
-                    hoverlabel: {{ bgcolor: 'rgba(21,28,44,0.95)', bordercolor: '#a78bfa', font: {{ family: 'JetBrains Mono, monospace', size: 12, color: '#f8fafc' }} }},
-                    xaxis: {{ title: etiquetaEjeX, gridcolor: 'rgba(148,163,184,0.1)' }},
-                    yaxis: {{ title: 'MTBS (h)', gridcolor: 'rgba(148,163,184,0.12)' }},
-                    shapes: [{{
-                        type: 'line', x0: 0, x1: 1, xref: 'paper', y0: MTBS_TARGET_HORAS, y1: MTBS_TARGET_HORAS, yref: 'y',
-                        line: {{ color: '#dc2626', width: 1.5, dash: 'dot' }}
-                    }}],
-                    margin: {{ l: 55, r: 15, t: 15, b: 45 }},
-                    height: 400,
-                    transition: {{ duration: 350, easing: 'cubic-in-out' }}
-                }};
-
-                Plotly.react('chartMtbsHabitos', traces, layout, {{ displaylogo: false, responsive: true }});
-
-                const gd = document.getElementById('chartMtbsHabitos');
-                gd.removeAllListeners && gd.removeAllListeners('plotly_click');
-                gd.on('plotly_click', function(evt) {{
-                    if (!evt || !evt.points || !evt.points.length || !evt.points[0].customdata) return;
-                    activarFiltroEquipo(evt.points[0].customdata[0]);
-                }});
-            }}
-
-            document.addEventListener("DOMContentLoaded", function() {{
-                renderMtbsCorrelacionHabitos();
-            }});
-        </script>
-    """
-
-    return html, script
-
-
 # ==============================================================================
-# E. MÓDULO INDEPENDIENTE — BACKLOG (DETALLE_BKL) · FLOTA VOLVO FMX
+# D. MÓDULO INDEPENDIENTE — BACKLOG (DETALLE_BKL) · FLOTA VOLVO FMX
 # ==============================================================================
 # Módulo aislado: solo LEE la hoja "DETALLE_BKL" y reutiliza el set de códigos
-# Volvo FMX ya validado en `_mtbs_equipos_volvo_fmx` (MARCA=VOLVO, MODELO
+# Volvo FMX ya validado en `_equipos_volvo_fmx` (MARCA=VOLVO, MODELO
 # contiene "FMX" — único punto de verdad de ese filtro en todo el archivo, para
 # no reimplementar el criterio). No modifica ni depende de ningún cálculo de
-# MTBF/MTTR/Disponibilidad Mecánica/Pareto de Fallas ni del módulo MTBS —
+# MTBF/MTTR/Disponibilidad Mecánica/Pareto de Fallas —
 # namespace propio `bkl`/`Bkl`/`BKL` en HTML/CSS/JS.
 # ==============================================================================
 
@@ -4404,7 +3709,7 @@ def cargar_detalle_bkl_items(path: str, df_parque: pd.DataFrame) -> list:
     Lee DETALLE_BKL a nivel de ÍTEM (una fila del Excel = un backlog = una tarjeta),
     separando por saltos de línea las columnas multi-repuesto (CODIGO, CANTIDAD,
     DESCRIPCION, CODIGOS_DISPONIBLES) y extrayendo (disponibles, total, %) de
-    STATUS_ALMACEN. Módulo aislado — reutiliza `_mtbs_equipos_volvo_fmx` como único
+    STATUS_ALMACEN. Módulo aislado — reutiliza `_equipos_volvo_fmx` como único
     criterio de filtro de flota, igual que `cargar_detalle_backlog`, pero NO comparte
     ni modifica esa función: alimenta una vista distinta ("Gestión de Backlog" en
     tarjetas), independiente del panel agregado de barras por semana/equipo.
@@ -4432,7 +3737,7 @@ def cargar_detalle_bkl_items(path: str, df_parque: pd.DataFrame) -> list:
     df = df.dropna(subset=["CODIGO_EQUIPO", "FECHA_BACKLOG"]).copy()
     df["CODIGO_EQUIPO"] = df["CODIGO_EQUIPO"].astype(str).str.strip().str.upper()
 
-    equipos_fmx = _mtbs_equipos_volvo_fmx(df_parque)
+    equipos_fmx = _equipos_volvo_fmx(df_parque)
     df = df[df["CODIGO_EQUIPO"].isin(equipos_fmx)].copy()
 
     df["FECHA_BACKLOG"] = pd.to_datetime(df["FECHA_BACKLOG"], errors="coerce")
@@ -4778,7 +4083,7 @@ def construir_panel_bkl_cards_html(items_bkl: list) -> tuple:
 
 
 # ==============================================================================
-# F. MÓDULO INDEPENDIENTE — ESTADO DE FLOTA DEL DÍA (junto al Velocímetro DM)
+# E. MÓDULO INDEPENDIENTE — ESTADO DE FLOTA DEL DÍA (junto al Velocímetro DM)
 # ==============================================================================
 # Tarjeta ubicada al costado derecho del Velocímetro DM Global (misma fila),
 # con selector de fecha propio. Lee "Registro de Intervenciones" completo —
@@ -4787,8 +4092,8 @@ def construir_panel_bkl_cards_html(items_bkl: list) -> tuple:
 # registrada, aplique o no al cálculo de Disponibilidad Mecánica — y expone el
 # resumen operativo/en proceso/inoperativo de la fecha seleccionada. Namespace
 # aislado `efd`/`EFD_*` en HTML/CSS/JS: no comparte identificadores con el
-# resto del dashboard (sí reutiliza helpers globales ya usados por MTBS/
-# Backlog: `activarFiltroEquipo`, `toggleFullscreen`).
+# resto del dashboard (sí reutiliza helpers globales ya usados por el módulo
+# de Backlog: `activarFiltroEquipo`, `toggleFullscreen`).
 # ==============================================================================
 
 def _valor_descripcion_intervencion_dia(fila) -> str:
@@ -4847,8 +4152,7 @@ def construir_panel_estado_flota_dia_html(df_intervenciones: pd.DataFrame, total
     """
     Construye el fragmento HTML de la tarjeta "Estado de Flota del Día" (para
     insertar junto al Velocímetro DM, misma fila) + su <script> dedicado.
-    Devuelve (html, script) — mismo patrón que `construir_panel_mtbs_html`/
-    `construir_panel_bkl_cards_html`.
+    Devuelve (html, script) — mismo patrón que `construir_panel_bkl_cards_html`.
     """
     json_registros = json.dumps(preparar_registros_flota_dia_js(df_intervenciones))
 
