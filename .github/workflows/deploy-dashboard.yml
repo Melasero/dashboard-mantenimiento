@@ -1,0 +1,49 @@
+name: Publicar Dashboard Ejecutivo
+
+on:
+  schedule:
+    # 00:30 y 12:30 UTC = ~19:30 y ~07:30 hora Lima (UTC-5) — poco después del
+    # cambio de turno noche/día. Ajusta a gusto; formato: minuto hora * * *
+    - cron: "30 0,12 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependencias
+        run: |
+          pip install --quiet pandas numpy plotly openpyxl \
+            google-api-python-client google-auth google-auth-httplib2
+
+      - name: Descargar insumos desde Google Drive
+        env:
+          GDRIVE_SA_KEY_JSON: ${{ secrets.GDRIVE_SA_KEY }}
+        run: python scripts/fetch_from_drive.py
+
+      - name: Generar dashboard
+        run: python "Dashboard_Ejecutivo_Mantenimiento_v6.py"
+
+      - name: Publicar como index.html
+        run: |
+          cp "Dashboard_Ejecutivo_Mantenimiento.html" index.html
+          git config user.name "Dashboard Publisher Bot"
+          git config user.email "actions@github.com"
+          git add index.html
+          if git diff --cached --quiet; then
+            echo "Sin cambios que publicar."
+          else
+            git commit -m "Actualiza dashboard ejecutivo (automático)"
+            git push
+          fi
