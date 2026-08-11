@@ -2,9 +2,9 @@ name: Publicar Dashboard Ejecutivo
 
 on:
   schedule:
-    # 00:30 y 12:30 UTC = ~19:30 y ~07:30 hora Lima (UTC-5) — poco después del
-    # cambio de turno noche/día. Ajusta a gusto; formato: minuto hora * * *
-    - cron: "30 0,12 * * *"
+    # 10:30 y 22:30 UTC = 05:30 y 17:30 hora Lima (Peru es UTC-5 todo el año,
+    # sin horario de verano). Formato: minuto hora * * *
+    - cron: "30 10,22 * * *"
   workflow_dispatch: {}
 
 permissions:
