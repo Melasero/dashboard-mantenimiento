@@ -1,8 +1,8 @@
 """
 Descarga desde Google Drive (Shared Drive "InformacionStracon") los insumos
 que Dashboard_Ejecutivo_Mantenimiento_v6.py necesita, usando una cuenta de
-servicio (sin interacción humana) — pensado para correr dentro de un runner
-de GitHub Actions, donde no existe un G:\\ montado ni un usuario que haga
+servicio (sin interacción humana) -- pensado para correr dentro de un runner
+de GitHub Actions, donde no existe un G:/ montado ni un usuario que haga
 drive.mount().
 
 Requiere la variable de entorno GDRIVE_SA_KEY_JSON con el JSON completo de
